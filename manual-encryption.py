@@ -23,6 +23,7 @@ arp = rdpcap('arp.cap')[0]
 # rc4 seed est composé de IV+clé
 seed = arp.iv+key 
 
+print 'initalil arp.icv '+str(arp.icv)
 # recuperation de icv dans le message (arp.icv) (en chiffre) -- je passe au format "text". Il y a d'autres manières de faire ceci...
 icv_encrypted='{:x}'.format(arp.icv).decode("hex")
 
@@ -34,6 +35,8 @@ cleartext=rc4.rc4crypt(message_encrypted,seed)
 
 # le ICV est les derniers 4 octets - je le passe en format Long big endian
 icv_enclair=cleartext[-4:]
+
+print 'icv en clair' + icv_enclair.encode("hex")
 
 (icv_numerique,)=struct.unpack('!L', icv_enclair)
 
@@ -52,24 +55,29 @@ print 'icv chiffre: ' + icv_encrypted.encode("hex")
 seed = arp.iv+key
 
 # Le message sans le ICV
-plaintxt=text_enclair
+plaintxt="sdsdsdkjdksjdksdjsdkjskdjsdsdsdkjdksjdksdjsdkjskdjsdsdsdkjdksjdksdjsdkjskdjsdsdsdkjdksjdksdjsdkjskdjsdsdsdkjdksjdksdjsdkjskdjsdsdsdkjdksjdksdjsdkjskdj"
 
 icv_plaintxt=(binascii.crc32(plaintxt) & 0xFFFFFFFF)
 
-icv_litleEndian=struct.pack('<I', icv_plaintxt)
+icv_litleEndian=struct.pack('<L', icv_plaintxt)
 
 # Le flux à chiffrer composé de l'icv du bloc
-fluxClearTxt = text_enclair + icv_litleEndian
+fluxClearTxt = plaintxt + icv_litleEndian
 
 # Chiffrement à l'aide de rc4
-cyphetxt=rc4.rc4crypt(fluxClearTxt,seed)
 
+cyphetxt=rc4.rc4crypt(fluxClearTxt,seed)
 
 #MAJ contenu msg chiffré (msg + icv)
 arp.wepdata = cyphetxt[:-4]
 #MAJ contenu ICV (icv chiffré)
-arp.icv = int(icv_litleEndian.encode('hex'), 16)
+icv_chiff = cyphetxt[-4:]
 
+(icv_test,) = struct.unpack('!L', icv_chiff)
+
+arp.icv = icv_test
+
+print arp.icv
 
 
 
