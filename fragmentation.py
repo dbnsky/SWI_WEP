@@ -3,26 +3,20 @@
 
 """ Manually decrypt a wep message given the WEP key"""
 
-__author__      = "Abraham Rubinstein"
+__author__      = "Nguefack Zacharie, Gallandat Théo, Emmanuel Schmid"
 __copyright__   = "Copyright 2017, HEIG-VD"
 __license__ 	= "GPL"
 __version__ 	= "1.0"
-__email__ 		= 
-__status__ 		= 
 
 from scapy.all import *
 import binascii
 import rc4
 
-
-
 #Cle wep AA:AA:AA:AA:AA
 key='\xaa\xaa\xaa\xaa\xaa'
+print "Key: " + key.encode("hex")
 
-
-
-
-
+#Fonction de division de la data en nombre de fragements souhaité
 def fragmentClearData(clearData, nbFragement):
     	frgmntSz = len(clearData)/nbFragement
 	fragements = []
@@ -37,33 +31,41 @@ def fragmentClearData(clearData, nbFragement):
 nbfrgmnt = 5
 
 # Message à chiffrer
-plaintxt = "Un vieil indien explique à son petit fils que chacun de nous a en lui deux loups qui se livrent bataille. Le premier loup représente la sérénité, l’amour et la gentillesse. Le second loup représente la peur l’avidité et la haine. « Lequel des deux loups gagne ? « demande l’enfant. « Celui que l’on nourrit. » Répond le grand père. Sagesse Amérindienne."
+plaintxt = "Un vieil indien explique à son petit fils que chacun de nous a en lui deux loups qui se livrent bataille. Le premier loup  représente la sérénité, l’amour et la gentillesse. Le second loup représente la peur l’avidité et la haine. « Lequel des deux loups gagne ? « demande l’enfant. « Celui que l’on nourrit. » Répond le grand père. Sagesse Amérindienne."
+print "Text Msg: " + plaintxt
+
 data_frgmnts = fragmentClearData(plaintxt, nbfrgmnt)
 
+
+#creation des trames 
 for index, dataToEncrypt in enumerate(data_frgmnts):
 
-	#lecture de message chiffré - rdpcap retourne toujours un array, même si la capture contient un seul paquet
+	# Récupération de la trame "template"
 	arp = rdpcap('arp.cap')[0]
 
 	# rc4 seed est composé de IV+clé
 	seed = arp.iv+key 
 
-	# Calcul ICV du texte en claire
-	icv_plaintxt = (binascii.crc32(dataToEncrypt) & 0xFFFFFFFF)
-	# Constuire
-	icv_LittleEndian = struct.pack('<L', icv_plaintxt)
+	# Calcul ICV
+	icv = (binascii.crc32(dataToEncrypt) & 0xFFFFFFFF)
+	print "Base ICV: " + str(icv)
+
+	# Converstion de l'icv en littleEndian
+	icv_LittleEndian = struct.pack('<L', icv)
+	print "ICV littleEndian: " + icv_LittleEndian.encode("hex")
 
 	# Message à chiffrer : data + icv
 	fluxClearTxt = dataToEncrypt + icv_LittleEndian
 
 	# Chiffrement à l'aide de rc4
-	cyphetxt=rc4.rc4crypt(fluxClearTxt, seed)
+	encryptedTxt=rc4.rc4crypt(fluxClearTxt, seed)
+	print "Encrypted Text Msg: " + encryptedTxt.encode("hex")
 
 	#MAJ contenu msg chiffré (msg + icv)
-	arp.wepdata = cyphetxt[:-4]
+	arp.wepdata = encryptedTxt[:-4]
 	
 	#MAJ contenu ICV (icv chiffré)
-	icv_chiff = cyphetxt[-4:]
+	icv_chiff = encryptedTxt[-4:]
 
 	# Construit valeur numérique de l'ICV chiffrée
 	(icv_test,) = struct.unpack('!L', icv_chiff)
@@ -72,15 +74,19 @@ for index, dataToEncrypt in enumerate(data_frgmnts):
 	arp.icv = icv_test
 
 	arp.SC = index
+	print "Index de la trame: " + str(arp.SC)
 
 	# les premiers fragements on le flag : MoreFragement
 	if index < (nbfrgmnt - 1) :
-		print arp.SC
 		arp.FCfield += 4
 
+	print "MoreFragement flag: " + str(arp.FCfield)
 
 	# Enregistre les fragements dans un fichier pcap
-	wrpcap('fragmentation.pcap',arp, append=True)
+	wrpcap('exo3.pcap',arp, append=True)
+	print "\n"
+
+print "Output created : exo3.pcap"
 
 
 

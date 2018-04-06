@@ -29,30 +29,31 @@ plaintxt="ThisMessageWasEncryptedAndNowItIsNot!"
 
 print "Text Msg: " + plaintxt
 
-#Création de l'icv
+# Création de l'icv
 icv=(binascii.crc32(plaintxt) & 0xFFFFFFFF)
 
 print "Base ICV: " + str(icv)
 
-#Converstion de l'icv en littleEndian
-icv_litleEndian=struct.pack('<L', icv)
+# Converstion de l'icv en littleEndian
+icv_LittleEndian=struct.pack('<L', icv)
 
-print "ICV littleEndian: " + icv_litleEndian.encode("hex")
+print "ICV littleEndian: " + icv_LittleEndian.encode("hex")
 
 # Le flux à chiffrer composé de l'icv du bloc et du message en clair
-streamClearTxt = plaintxt + icv_litleEndian
+streamClearTxt = plaintxt + icv_LittleEndian
 
 # Chiffrement à l'aide de rc4
 encryptedTxt=rc4.rc4crypt(streamClearTxt,seed)
 
 print "Encrypted Text Msg: " + encryptedTxt.encode("hex")
 
-#MAJ contenu msg chiffré (msg + icv)
+# MAJ contenu msg chiffré (msg + icv)
 arp.wepdata = encryptedTxt[:-4]
 
-#MAJ contenu ICV (icv chiffré)
+# MAJ contenu ICV (icv chiffré)
 icv_chiff = encryptedTxt[-4:]
 
+# Construit valeur numérique de l'ICV chiffrée
 (arp.icv,) = struct.unpack('!L', icv_chiff)
 
 wrpcap('exo2.pcap',arp, append=False)
